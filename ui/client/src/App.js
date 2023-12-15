@@ -7,7 +7,7 @@ function App() {
 
   const createEmptyMap = () => Array.from({ length: 10 }, () => Array(10).fill(0));
 
-  const web3 = new Web3("http://47.254.27.97:8545");
+  const web3 = new Web3("http://47.89.227.104:8545");
   const gasPrice = 7;
   const callcata_down = "0x70e87aaf0000000000000000000000000000000000000000000000000000000000000000";
   const callcata_left = "0x70e87aaf0000000000000000000000000000000000000000000000000000000000000001";
@@ -16,12 +16,12 @@ function App() {
   const contractAddr = "0x8c563384b3658321EEE1Ced1b791f700e7Ca1258"
   const preSetPrivateKeys = [
     // Test key. Don't expect to get any tokens here, idiot scanner, get out!
-    '0xb421b81b0d440f71a75ff95a045539c36cd62153eba89ee7155a0e4860970dd6',
+    '0xf783957ba9c74fb4a4a43d98b4c0a069da4e3ae8996716caf43bca9bbe2eb99f',
   ];
 
   // 假设这是异步获取到的编码数据
   const fetchEncodedBoardData = async () => {
-    const response = await fetch('http://47.254.27.97:8545', {
+    const response = await fetch('http://47.89.227.104:8545', {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
@@ -45,7 +45,7 @@ function App() {
 
   const fetchScoreData = async (address) => {
 
-    const response = await fetch('http://47.254.27.97:8545', {
+    const response = await fetch('http://47.89.227.104:8545', {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
@@ -239,7 +239,7 @@ function App() {
       }));
       setPlayers(updatedPlayers);
     };
-    fetchAllScore();  // 首次加载时调用一次
+    // fetchAllScore();  // 首次加载时调用一次
 
     const fetchScore = async () => {
       if (!playerSK) {
@@ -253,7 +253,7 @@ function App() {
     // 定时器逻辑
     const intervalId = setInterval(updateMap, 200);
     const intervalId2 = setInterval(fetchScore, 3000);  // 每 3 秒调用一次 fetchData
-    const intervalId3 = setInterval(fetchAllScore, 3000);  // 每 3 秒调用一次 fetchData
+    // const intervalId3 = setInterval(fetchAllScore, 3000);  // 每 3 秒调用一次 fetchData
 
     // 键盘事件监听逻辑
     const handleKeyDown = (event) => {
@@ -292,7 +292,7 @@ function App() {
     return () => {
       clearInterval(intervalId);  // 清除定时器
       clearInterval(intervalId2);  // 清除定时器
-      clearInterval(intervalId3);  // 清除定时器
+      // clearInterval(intervalId3);  // 清除定时器
       window.removeEventListener('keydown', handleKeyDown);  // 移除键盘事件监听
     };
   }, [isMoving]); // 依赖项列表中包括 isMoving
@@ -325,16 +325,7 @@ function App() {
             your score: <span className="player-number-value">{score}</span>
           </div>
         </div>
-        <div className="players-panel">
-          <h3>Score List</h3>
-          <ul>
-            {players.map((player, index) => (
-              <li key={index}>
-                Player {getPlayerNum(player.player)}: {player.score}
-              </li>
-            ))}
-          </ul>
-        </div>
+
       </div>
 
 
