@@ -56,7 +56,7 @@ const tileABI = [
 ];
 
 function pull() {
-    return execSync("cast call --rpc-url https://testnet-rpc1.artela.network $(grep CONTRACT .env | cut -d '=' -f2) \"getBoard()\" --private-key $(grep ACCOUNT_1_SK .env | cut -d '=' -f2)").toString();
+    return execSync("cast call --rpc-url http://47.254.2.74:8545 $(grep CONTRACT .env | cut -d '=' -f2) \"getBoard()\" --private-key $(grep ACCOUNT_1_SK .env | cut -d '=' -f2)").toString();
 }
 
 // 解码Tile数据

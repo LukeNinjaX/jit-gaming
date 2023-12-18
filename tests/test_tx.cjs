@@ -14,7 +14,7 @@ const EthereumTx = require('ethereumjs-tx').Transaction;
 
 const walletABI = JSON.parse(fs.readFileSync('./tests/jit-aa-abi/AspectEnabledSimpleAccount.abi', "utf-8"));
 const factoryABI = JSON.parse(fs.readFileSync('./tests/jit-aa-abi/AspectEnabledSimpleAccountFactory.abi', "utf-8"));
-const factoryAddress = "0x93E003eEF46A875235CFB4676eD768bB58DE0Fca";
+const factoryAddress = "0xD94977F6aff03869d333DcA2bE2288077f73839a";
 
 const demoContractOptions = {
     data: contractBin
