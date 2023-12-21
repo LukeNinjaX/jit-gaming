@@ -246,7 +246,7 @@ export class Aspect implements IAspectTransaction, IAspectOperation {
     // unused methods
     //****************************
 
-    isOwner(sender: string): bool { return false; }
+    isOwner(sender: string): bool { return true; }
 
     onContractBinding(contractAddr: string): bool { return true; }
 
