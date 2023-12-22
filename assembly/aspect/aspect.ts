@@ -1,22 +1,13 @@
-
 import {
     BigInt,
-    FilterTxCtx,
-    IAspectBlock,
-    IAspectTransaction,
+    ethereum,
     IAspectOperation,
-    OnBlockFinalizeCtx,
-    OnBlockInitializeCtx,
-    PostContractCallCtx,
-    PostTxCommitCtx,
-    PostTxExecuteCtx,
-    PreContractCallCtx,
-    PreTxExecuteCtx,
-    OperationCtx,
     JitInherentRequest,
-    sys,
-    ethereum
+    OperationCtx,
+    PreContractCallCtx,
+    sys
 } from "@artela/aspect-libs";
+import {IPreContractCallJP} from "@artela/aspect-libs/types/aspect-interface";
 
 /**
  * There are two types of Aspect: Transaction-Level Aspect and Block-Level Aspect.
@@ -27,7 +18,7 @@ import {
  * You can implement corresponding interfaces: IAspectTransaction, IAspectBlock,IAspectOperation or both to tell Artela which
  * type of Aspect you are implementing.
  */
-export class Aspect implements IAspectTransaction, IAspectOperation {
+export class Aspect implements IPreContractCallJP, IAspectOperation {
 
     static readonly SYS_PLAYER_STORAGE_KEY: string = 'SYS_PLAYER_STORAGE_KEY';
 
@@ -248,15 +239,5 @@ export class Aspect implements IAspectTransaction, IAspectOperation {
 
     isOwner(sender: string): bool { return true; }
 
-    onContractBinding(contractAddr: string): bool { return true; }
 
-    filterTx(ctx: FilterTxCtx): bool { return true; }
-
-    preTxExecute(ctx: PreTxExecuteCtx): void { }
-
-    postContractCall(ctx: PostContractCallCtx): void { }
-
-    postTxExecute(ctx: PostTxExecuteCtx): void { }
-
-    postTxCommit(ctx: PostTxCommitCtx): void { }
 }
