@@ -5,6 +5,7 @@ import {
     JitInherentRequest,
     OperationCtx,
     PreContractCallCtx,
+    JitCallBuilder,
     sys
 } from "@artela/aspect-libs";
 import {IPreContractCallJP} from "@artela/aspect-libs/types/aspect-interface";
@@ -99,19 +100,10 @@ export class Aspect implements IPreContractCallJP, IAspectOperation {
             // ethereum.Bytes.fromHexString(sys.utils.uint8ArrayToHex(ctx.currentCall.data))
             ethereum.Bytes.fromHexString(moveCalldata)
         ]);
-
-        // Construct a JIT request (similar to the user operation defined in EIP-4337)
-        let request = new JitInherentRequest(
-            sys.utils.hexToUint8Array(sysPlayer),        // The account initiating the operation
-            sys.utils.hexToUint8Array(ethereum.Number.fromU64(nonce).encodeHex()),
-            new Uint8Array(0),             // The initCode of the account (necessary only if the account is not yet on-chain and needs to be created)
-            sys.utils.hexToUint8Array(calldata), // The amount of gas to allocate to the main execution call
-            sys.utils.hexToUint8Array(ethereum.Number.fromU64(8000000).encodeHex()),         // The amount of gas to allocate for the verification step
-            sys.utils.hexToUint8Array(ethereum.Number.fromU64(8000000).encodeHex()), // The amount of gas to compensate the bundler for pre-verification execution, calldata, and any untrackable gas overhead on-chain
-            sys.utils.hexToUint8Array(ethereum.Number.fromU64(100).encodeHex()),         // Maximum fee per gas (similar to EIP-1559 max_fee_per_gas)
-            sys.utils.hexToUint8Array(ethereum.Number.fromU64(100).encodeHex()), // Maximum priority fee per gas (similar to EIP-1559 max_priority_fee_per_gas)
-            new Uint8Array(0),     // Address of the paymaster sponsoring the transaction, followed by extra data to send to the paymaster (empty for self-sponsored transactions)
-        );
+        let request = new JitCallBuilder()
+            .callData(sys.utils.hexToUint8Array(calldata))
+            .sender(sysPlayer)
+            .build();
 
         // Submit the JIT call
         let response = sys.evm.jitCall(ctx).submit(request);
