@@ -97,6 +97,7 @@ async function f() {
         data: '0x' + aspectCode,
         properties: [],
         paymaster: account.address,
+        joinPoints:["PreContractCall"]
         proof: '0x0'
     }).encodeABI();
 
