@@ -7,14 +7,14 @@ const fs = require("fs");
 const { numberToHex } = require("@artela/web3-utils");
 const BigNumber = require('bignumber.js');
 
-const contractBin = fs.readFileSync('./contracts/build/contract/Counter.bin', "utf-8");
-const abi = fs.readFileSync('./contracts/build/contract/Counter.abi', "utf-8")
+const contractBin = fs.readFileSync('/home/luke/go/src/github.com/artela-network/luke-jit-gaming/contracts/build/contract/Counter.bin', "utf-8");
+const abi = fs.readFileSync('/home/luke/go/src/github.com/artela-network/luke-jit-gaming/contracts/build/contract/Counter.abi', "utf-8")
 const contractABI = JSON.parse(abi);
 const EthereumTx = require('ethereumjs-tx').Transaction;
 
-const walletABI = JSON.parse(fs.readFileSync('./tests/jit-aa-abi/AspectEnabledSimpleAccount.abi', "utf-8"));
-const factoryABI = JSON.parse(fs.readFileSync('./tests/jit-aa-abi/AspectEnabledSimpleAccountFactory.abi', "utf-8"));
-const factoryAddress = "0xD94977F6aff03869d333DcA2bE2288077f73839a";
+const walletABI = JSON.parse(fs.readFileSync('/home/luke/go/src/github.com/artela-network/luke-jit-gaming/tests/jit-aa-abi/AspectEnabledSimpleAccount.abi', "utf-8"));
+const factoryABI = JSON.parse(fs.readFileSync('/home/luke/go/src/github.com/artela-network/luke-jit-gaming/tests/jit-aa-abi/AspectEnabledSimpleAccountFactory.abi', "utf-8"));
+const factoryAddress = "0x7b20970624Cd01582Cd01385B67B969446AC5110";
 
 const demoContractOptions = {
     data: contractBin
@@ -45,7 +45,7 @@ async function f() {
     // ******************************************
     // init web3 and private key
     // ******************************************
-    const configJson = JSON.parse(fs.readFileSync('./project.config.json', "utf-8").toString());
+    const configJson = JSON.parse(fs.readFileSync('/home/luke/go/src/github.com/artela-network/luke-jit-gaming/project.config.json', "utf-8").toString());
     const web3 = new Web3(configJson.node);
 
     let sk = fs.readFileSync("privateKey.txt", 'utf-8');
@@ -78,6 +78,8 @@ async function f() {
     let signedTx = await web3.eth.accounts.signTransaction(tx, account.privateKey);
     console.log("signed contract deploy tx : \n", signedTx);
 
+    console.log("sender address: ", account.address)
+
     let receipt = await web3.eth.sendSignedTransaction(signedTx.rawTransaction);
     contract.options.address = receipt.contractAddress;
     console.log('contract address is: ', contract.options.address);
@@ -87,7 +89,7 @@ async function f() {
     // ******************************************
 
     // load aspect code and deploy
-    let aspectCode = fs.readFileSync('./build/release.wasm', {
+    let aspectCode = fs.readFileSync('/home/luke/go/src/github.com/artela-network/luke-jit-gaming/build/release.wasm', {
         encoding: "hex"
     });
 
@@ -97,7 +99,7 @@ async function f() {
         data: '0x' + aspectCode,
         properties: [],
         paymaster: account.address,
-        joinPoints:["PreContractCall"]
+        joinPoints: ["PreContractCall"],
         proof: '0x0'
     }).encodeABI();
 
@@ -223,8 +225,12 @@ async function f() {
         gas: 8000000,
         data: calldata,
         to: aspectCore.options.address,
-        chainId
+        chainID: "0x" + chainId.toString(16)
     }
+
+    const estimateGasTx = await web3.eth.estimateGas(tx);
+    console.log("eth_estimatedGas(estimeateGasJIT): ", estimateGasTx);
+    tx.gas = estimateGasTx;
 
     signedTx = await web3.eth.accounts.signTransaction(tx, account.privateKey);
     receipt = await web3.eth.sendSignedTransaction(signedTx.rawTransaction);
@@ -264,12 +270,18 @@ async function f() {
     console.log("ret ", ret);
 
     // send tx
-    await contract.methods.move(2).send({
+    let tx1 = {
         from: account.address,
         gas: 20000000,
         gasPrice: gasPrice,
         nonce: nonce++
-    }).on('transactionHash', (txHash) => {
+    }
+
+    const estimateGas = await web3.eth.estimateGas(tx1);
+    console.log("eth_estimatedGas(estimeateGasJIT): ", estimateGas);
+    tx1.gas = estimateGas;
+
+    await contract.methods.move(2).send(tx1).on('transactionHash', (txHash) => {
         console.log('move tx: ', txHash);
     }).on('receipt', function (receipt) {
         console.log('move receipt: ', receipt);

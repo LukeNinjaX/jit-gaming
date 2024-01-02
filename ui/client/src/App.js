@@ -7,13 +7,13 @@ function App() {
 
   const createEmptyMap = () => Array.from({ length: 10 }, () => Array(10).fill(0));
 
-  const web3 = new Web3("http://47.254.2.74:8545");
+  const web3 = new Web3("http://127.0.0.1:8545");
   const gasPrice = 7;
   const callcata_down = "0x70e87aaf0000000000000000000000000000000000000000000000000000000000000000";
   const callcata_left = "0x70e87aaf0000000000000000000000000000000000000000000000000000000000000001";
   const callcata_up = "0x70e87aaf0000000000000000000000000000000000000000000000000000000000000002";
   const callcata_right = "0x70e87aaf0000000000000000000000000000000000000000000000000000000000000003";
-  const contractAddr = "0x0a23d2bf1BA4196555c233f5E33Fa7a52917A87D"
+  const contractAddr = "0x74034385aEf360Cb658Be51eC188E1bBeDd880FE"
   const preSetPrivateKeys = [
     // Test key. Don't expect to get any tokens here, idiot scanner, get out!
     '0xa116fde9fc751a0ce443b803b282fdbba3a32ab68250f38d58fd8c0156849cd5',
@@ -21,7 +21,7 @@ function App() {
 
   // 假设这是异步获取到的编码数据
   const fetchEncodedBoardData = async () => {
-    const response = await fetch('http://47.254.2.74:8545', {
+    const response = await fetch('http://127.0.0.1:8545', {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
@@ -45,7 +45,7 @@ function App() {
 
   const fetchScoreData = async (address) => {
 
-    const response = await fetch('http://47.254.2.74:8545', {
+    const response = await fetch('http://127.0.0.1:8545', {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',

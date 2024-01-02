@@ -1,14 +1,19 @@
 import {
     BigInt,
+    BytesData,
     ethereum,
+    hexToUint8Array,
     IAspectOperation,
-    JitInherentRequest,
-    OperationCtx,
-    PreContractCallCtx,
+    IPreContractCallJP,
     JitCallBuilder,
-    sys
+    OperationInput,
+    PreContractCallInput,
+    stringToUint8Array,
+    sys,
+    uint8ArrayToHex,
+    uint8ArrayToString,
 } from "@artela/aspect-libs";
-import {IPreContractCallJP} from "@artela/aspect-libs/types/aspect-interface";
+import { Protobuf } from "as-proto/assembly/Protobuf";
 
 /**
  * There are two types of Aspect: Transaction-Level Aspect and Block-Level Aspect.
@@ -23,31 +28,42 @@ export class Aspect implements IPreContractCallJP, IAspectOperation {
 
     static readonly SYS_PLAYER_STORAGE_KEY: string = 'SYS_PLAYER_STORAGE_KEY';
 
-    preContractCall(ctx: PreContractCallCtx): void {
+    preContractCall(input: PreContractCallInput): void {
 
-        let calldata = sys.utils.uint8ArrayToHex(ctx.currentCall.data);
+        sys.log("======== 1")
+
+        let calldata = uint8ArrayToHex(input.call!.data);
         let method = this.parseCallMethod(calldata);
+
+        sys.log("======== 2")
 
         // if method is 'move(uint8)'
         if (method == "0x70e87aaf") {
-            let currentCaller = ctx.currentCall.from;
-            let sysPlayers = this.getSysPlayersList(ctx);
+            sys.log("======== 3")
+            let currentCaller = uint8ArrayToHex(input.call!.from);
+            let sysPlayers = this.getSysPlayersList();
+            sys.log("======== 4")
             let isSysPlayer = sysPlayers.includes(this.rmPrefix(currentCaller).toLowerCase());
 
             // if player moves, sys players also move just-in-time
+            sys.log("======== 5")
             if (!isSysPlayer) {
+                sys.log("======== 6")
                 // do jit-call
                 for (let i = 0; i < sysPlayers.length; ++i) {
-                    this.doMove(sysPlayers[i], ctx);
+                    sys.log("======== 7")
+                    this.doMove(sysPlayers[i], input);
                 }
+                sys.log("======== 8")
             } else {
+                sys.log("======== 100")
                 // if sys player moves, do nothing in Aspect and pass the join point
                 return;
             }
         }
     }
 
-    operation(ctx: OperationCtx, data: Uint8Array): Uint8Array {
+    operation(input: OperationInput): Uint8Array {
         // calldata encode rule
         // * 2 bytes: op code
         //      op codes lists:
@@ -59,23 +75,22 @@ export class Aspect implements IPreContractCallJP, IAspectOperation {
         //
         // * variable-length bytes: params
         //      encode rule of params is defined by each method
-        const calldata = sys.utils.uint8ArrayToHex(data);
+        const calldata = uint8ArrayToHex(input.callData);
         const op = this.parseOP(calldata);
         const params = this.parsePrams(calldata);
 
         if (op == "0001") {
-            this.registerSysPlayer(params, ctx);
+            this.registerSysPlayer(params);
             return new Uint8Array(0);
         }
         if (op == "1001") {
-            let ret = this.getSysPlayers(ctx);
-            return sys.utils.stringToUint8Array(ret);
+            let ret = this.getSysPlayers();
+            return stringToUint8Array(ret);
         }
         if (op == "1002") {
-            let ret = this.getAAWalletNonce_(params, ctx);
-            return sys.utils.stringToUint8Array(ret);
-        }
-        else {
+            let ret = this.getAAWalletNonce_(params);
+            return stringToUint8Array(ret);
+        } else {
             sys.revert("unknown op");
         }
         return new Uint8Array(0);
@@ -84,44 +99,46 @@ export class Aspect implements IPreContractCallJP, IAspectOperation {
     //****************************
     // internal methods
     //****************************
-    doMove(sysPlayer: string, ctx: PreContractCallCtx): void {
+    doMove(sysPlayer: string, input: PreContractCallInput): void {
         // init jit call
-        let nonce = this.getAAWalletNonce(sysPlayer, ctx);
-
-        let direction = this.getRandomDirection(ctx);
+        sys.log("======== 9")
+        let direction = this.getRandomDirection(input);
 
         let moveCalldata = ethereum.abiEncode('move', [
             ethereum.Number.fromU8(direction, 8)
         ]);
 
-        const calldata = ethereum.abiEncode('execute', [
-            ethereum.Address.fromHexString(ctx.currentCall.to),
-            ethereum.Number.fromU64(0),
-            // ethereum.Bytes.fromHexString(sys.utils.uint8ArrayToHex(ctx.currentCall.data))
-            ethereum.Bytes.fromHexString(moveCalldata)
-        ]);
-        let request = new JitCallBuilder()
-            .callData(sys.utils.hexToUint8Array(calldata))
-            .sender(sysPlayer)
-            .build();
+        sys.log("======== 10")
+        // Construct a JIT request (similar to the user operation defined in EIP-4337)
+        let request = JitCallBuilder.simple(hexToUint8Array(sysPlayer),
+            input.call!.to,
+            hexToUint8Array(moveCalldata)
+        ).build();
 
         // Submit the JIT call
-        let response = sys.evm.jitCall(ctx).submit(request);
+        let response = sys.hostApi.evmCall.jitCall(request);
 
+        sys.log("======== 11")
         // Verify successful submission of the call
-        sys.require(response.success, 'Failed to submit the JIT call: ' + sysPlayer);
+        sys.require(response.success, `Failed to submit the JIT call: ${sysPlayer}, err: ${response.errorMsg}, ret: ${uint8ArrayToString(response.ret)}`);
 
+        sys.log(`submitted call ${uint8ArrayToHex(response.jitInherentHashes[0])}`)
+
+        sys.log("======== 12")
         // debug code
         // sys.require(nonce == 0, 'real nonce: ' + nonce.toString()
         //     + "- jit call ret :" + sys.utils.uint8ArrayToString(response.ret)
         //     + "- jit call hash :" + sys.utils.uint8ArrayToHex(response.txHash)
         // );
 
-        this.increaseAAWalletNonce(sysPlayer, nonce, ctx);
+        // this.increaseAAWalletNonce(sysPlayer, nonce, ctx);
     }
 
-    getRandomDirection(ctx: PreContractCallCtx): u8 {
-        let random = sys.utils.uint8ArrayToHex(ctx.tx.content.unwrap().hash.slice(4, 6));
+    getRandomDirection(input: PreContractCallInput): u8 {
+        const rawHash = sys.hostApi.runtimeContext.get('tx.hash');
+        var hash = Protobuf.decode<BytesData>(rawHash, BytesData.decode).data;
+
+        let random = uint8ArrayToHex(hash.slice(4, 6));
 
         return <u8>(BigInt.fromString(random, 16).toUInt64() % 4);
     }
@@ -133,9 +150,9 @@ export class Aspect implements IPreContractCallJP, IAspectOperation {
         return '0x' + calldata.substring(0, 8);
     }
 
-    getAAWalletNonce(wallet: string, ctx: PreContractCallCtx): u64 {
+    getAAWalletNonce(wallet: string): u64 {
 
-        let ret = sys.aspect.mutableState(ctx).get<string>(wallet);
+        let ret = sys.aspect.mutableState.get<string>(wallet);
         if (ret.unwrap() == "") {
             ret.set("0".toString());
         }
@@ -143,9 +160,9 @@ export class Aspect implements IPreContractCallJP, IAspectOperation {
         return BigInt.fromString(ret.unwrap()).toUInt64();
     }
 
-    increaseAAWalletNonce(wallet: string, nonce: u64, ctx: PreContractCallCtx): void {
+    increaseAAWalletNonce(wallet: string, nonce: u64): void {
 
-        sys.aspect.mutableState(ctx).get<string>(wallet).set((nonce + 1).toString());
+        sys.aspect.mutableState.get<string>(wallet).set((nonce + 1).toString());
     }
 
     parseOP(calldata: string): string {
@@ -172,7 +189,7 @@ export class Aspect implements IPreContractCallJP, IAspectOperation {
         }
     }
 
-    registerSysPlayer(params: string, ctx: OperationCtx): void {
+    registerSysPlayer(params: string): void {
         // params encode rules:
         //     20 bytes: player address
         //         eg. e2f8857467b61f2e4b1a614a0d560cd75c0c076f
@@ -180,8 +197,8 @@ export class Aspect implements IPreContractCallJP, IAspectOperation {
         sys.require(params.length == 40, "illegal params");
         const player = params.slice(0, 40);
 
-        let sysPlayersKey = sys.aspect.mutableState(ctx).get<string>(Aspect.SYS_PLAYER_STORAGE_KEY);
-        let encodeSysPlayers = sysPlayersKey.unwrap();
+        let sysPlayersKey = sys.aspect.mutableState.get<Uint8Array>(Aspect.SYS_PLAYER_STORAGE_KEY);
+        let encodeSysPlayers = uint8ArrayToHex(sysPlayersKey.unwrap());
         if (encodeSysPlayers == "") {
             let count = "0001";
             encodeSysPlayers = count + player;
@@ -195,31 +212,36 @@ export class Aspect implements IPreContractCallJP, IAspectOperation {
             encodeSysPlayers = encodeCount + encodeSysPlayers.slice(4, encodeSysPlayers.length) + player;
         }
 
-        sysPlayersKey.set(encodeSysPlayers);
+        sysPlayersKey.set(hexToUint8Array(encodeSysPlayers));
     }
 
-    getSysPlayers(ctx: OperationCtx): string {
-        return sys.aspect.mutableState(ctx).get<string>(Aspect.SYS_PLAYER_STORAGE_KEY).unwrap();
+    getSysPlayers(): string {
+        return uint8ArrayToHex(sys.aspect.mutableState.get<Uint8Array>(Aspect.SYS_PLAYER_STORAGE_KEY).unwrap());
     }
 
-    getAAWalletNonce_(params: string, ctx: OperationCtx): string {
+    getAAWalletNonce_(params: string): string {
         sys.require(params.length == 40, "illegal params");
         const wallet = params.slice(0, 40);
-        return sys.aspect.mutableState(ctx).get<string>(wallet.toLowerCase()).unwrap();
+        return sys.aspect.mutableState.get<string>(wallet.toLowerCase()).unwrap();
     }
 
-    getSysPlayersList(ctx: PreContractCallCtx): Array<string> {
-        let sysPlayersKey = sys.aspect.mutableState(ctx).get<string>(Aspect.SYS_PLAYER_STORAGE_KEY);
-        let encodeSysPlayers = sysPlayersKey.unwrap();
+    getSysPlayersList(): Array<string> {
+        sys.log("======== 3.1")
+        let sysPlayersKey = sys.aspect.mutableState.get<Uint8Array>(Aspect.SYS_PLAYER_STORAGE_KEY);
+        let encodeSysPlayers = uint8ArrayToHex(sysPlayersKey.unwrap());
+        sys.log("======== 3.2")
+        sys.log(encodeSysPlayers);
 
         let encodeCount = encodeSysPlayers.slice(0, 4);
         let count = BigInt.fromString(encodeCount, 16).toInt32();
-
+        sys.log("======== 3.3")
         const array = new Array<string>();
         encodeSysPlayers = encodeSysPlayers.slice(4);
+        sys.log("======== 3.4")
         for (let i = 0; i < count; ++i) {
             array[i] = encodeSysPlayers.slice(40 * i, 40 * (i + 1)).toLowerCase();
         }
+        sys.log("======== 3.5")
 
         return array;
     }
@@ -229,7 +251,7 @@ export class Aspect implements IPreContractCallJP, IAspectOperation {
     // unused methods
     //****************************
 
-    isOwner(sender: string): bool { return true; }
-
-
+    isOwner(sender: Uint8Array): bool {
+        return false;
+    }
 }
