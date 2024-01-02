@@ -269,17 +269,24 @@ async function f() {
     ret = await web3.eth.call(tx);
     console.log("ret ", ret);
 
+    let cdata = contract.methods.move(2).encodeABI();
     // send tx
+    let estimateTx1 = {
+        data: cdata,
+        from: account.address,
+        to: contract._address,
+        gas: 20000000,
+        gasPrice: gasPrice,
+    }
+
+    const estimateGas = await web3.eth.estimateGas(estimateTx1);
+    console.log("eth_estimatedGas(move): ", estimateGas);
     let tx1 = {
         from: account.address,
-        gas: 20000000,
+        gas: estimateGas,
         gasPrice: gasPrice,
         nonce: nonce++
     }
-
-    const estimateGas = await web3.eth.estimateGas(tx1);
-    console.log("eth_estimatedGas(estimeateGasJIT): ", estimateGas);
-    tx1.gas = estimateGas;
 
     await contract.methods.move(2).send(tx1).on('transactionHash', (txHash) => {
         console.log('move tx: ', txHash);

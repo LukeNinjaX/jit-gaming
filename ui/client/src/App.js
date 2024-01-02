@@ -13,10 +13,10 @@ function App() {
   const callcata_left = "0x70e87aaf0000000000000000000000000000000000000000000000000000000000000001";
   const callcata_up = "0x70e87aaf0000000000000000000000000000000000000000000000000000000000000002";
   const callcata_right = "0x70e87aaf0000000000000000000000000000000000000000000000000000000000000003";
-  const contractAddr = "0x74034385aEf360Cb658Be51eC188E1bBeDd880FE"
+  const contractAddr = "0xEDCb2C137Fc16B643B1d215631CB00daf2888d81"
   const preSetPrivateKeys = [
     // Test key. Don't expect to get any tokens here, idiot scanner, get out!
-    '0xa116fde9fc751a0ce443b803b282fdbba3a32ab68250f38d58fd8c0156849cd5',
+    '0x72721215a913b3cc662ee75b8cbc418586f01e23b49c4599ec644bcf73cdb6b0',
   ];
 
   // 假设这是异步获取到的编码数据
@@ -151,6 +151,10 @@ function App() {
       gasPrice,
       gas: 20000000
     }
+
+    const estimateGas = await web3.eth.estimateGas(tx);
+    console.log("eth_estimatedGas(estimeateGasJIT): ", estimateGas);
+    tx.gas = estimateGas;
 
     // 签名并发送交易
     try {
